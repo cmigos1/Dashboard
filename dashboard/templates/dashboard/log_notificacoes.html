@@ -1,0 +1,155 @@
+{% extends 'dashboard/base.html' %}
+
+{% block content %}
+<h1 class="h3 mb-4 text-gray-800">Log de Notificações</h1>
+
+<!-- Filtros -->
+<div class="card shadow mb-4">
+    <div class="card-header py-3">
+        <h6 class="m-0 font-weight-bold text-primary">Filtros</h6>
+    </div>
+    <div class="card-body">
+        <form method="get" class="mb-0">
+            <div class="row">
+                <div class="col-md-3 mb-3">
+                    <label for="grupo" class="form-label">Grupo</label>
+                    <select class="form-select" id="grupo" name="grupo">
+                        <option value="">Todos os grupos</option>
+                        {% for grupo in grupos %}
+                        <option value="{{ grupo.tipo }}" {% if request.GET.grupo == grupo.tipo %}selected{% endif %}>
+                            {{ grupo.get_tipo_display }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3 mb-3">
+                    <label for="data_inicio" class="form-label">Data Início</label>
+                    <input type="date" class="form-control" id="data_inicio" name="data_inicio" value="{{ request.GET.data_inicio }}">
+                </div>
+                <div class="col-md-3 mb-3">
+                    <label for="data_fim" class="form-label">Data Fim</label>
+                    <input type="date" class="form-control" id="data_fim" name="data_fim" value="{{ request.GET.data_fim }}">
+                </div>
+                <div class="col-md-3 mb-3 d-flex align-items-end">
+                    <button type="submit" class="btn btn-primary w-100">Filtrar</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Tabela de Notificações -->
+<div class="card shadow">
+    <div class="card-header py-3">
+        <h6 class="m-0 font-weight-bold text-primary">Histórico de Notificações</h6>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-bordered">
+                <thead>
+                    <tr>
+                        <th>Pessoa</th>
+                        <th>Grupo</th>
+                        <th>Telefone</th>
+                        <th>Vacina</th>
+                        <th>Data</th>
+                        <th>Status</th>
+                        <th>Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for notificacao in notificacoes %}
+                    <tr>
+                        <td>{{ notificacao.pessoa.nome }}</td>
+                        <td>
+                            {% for grupo in notificacao.pessoa.grupos.all %}
+                            <span class="badge {% if grupo.tipo == 'idoso' %}bg-danger{% elif grupo.tipo == 'risco' %}bg-warning{% elif grupo.tipo == 'crianca' %}bg-info{% endif %} me-1">
+                                {{ grupo.get_tipo_display }}
+                            </span>
+                            {% endfor %}
+                        </td>
+                        <td>{{ notificacao.pessoa.telefone }}</td>
+                        <td>{{ notificacao.tipo_vacina.nome }}</td>
+                        <td>{{ notificacao.data_envio|date:"d/m/Y H:i" }}</td>
+                        <td>
+                            {% if notificacao.enviada %}
+                            <span class="badge bg-success">Enviada</span>
+                            {% else %}
+                            <span class="badge bg-danger">Falha</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <div class="d-flex">
+                                <button type="button" class="btn btn-sm btn-outline-secondary me-2" data-bs-toggle="modal" data-bs-target="#mensagemModal{{ notificacao.id }}">
+                                    <i class="fas fa-eye"></i> Ver mensagem
+                                </button>
+                                
+                                {% with telefone_limpo=notificacao.pessoa.telefone|default:""|cut:" "|cut:"-"|cut:"("|cut:")" %}
+                                {% if telefone_limpo %}
+                                    {% if telefone_limpo|length == 10 or telefone_limpo|length == 11 %}
+                                        {% with telefone_whatsapp='55'|add:telefone_limpo %}
+                                        <a href="https://wa.me/{{ telefone_whatsapp }}?text={{ notificacao.mensagem|urlencode }}" 
+                                           class="btn btn-sm btn-success" target="_blank">
+                                            <i class="fab fa-whatsapp"></i> Enviar
+                                        </a>
+                                        {% endwith %}
+                                    {% else %}
+                                        <a href="https://wa.me/{{ telefone_limpo }}?text={{ notificacao.mensagem|urlencode }}" 
+                                           class="btn btn-sm btn-success" target="_blank">
+                                            <i class="fab fa-whatsapp"></i> Enviar
+                                        </a>
+                                    {% endif %}
+                                {% endif %}
+                                {% endwith %}
+                            </div>
+                            
+                            <!-- Modal com a mensagem -->
+                            <div class="modal fade" id="mensagemModal{{ notificacao.id }}" tabindex="-1" aria-labelledby="mensagemModalLabel{{ notificacao.id }}" aria-hidden="true">
+                                <div class="modal-dialog">
+                                    <div class="modal-content">
+                                        <div class="modal-header">
+                                            <h5 class="modal-title" id="mensagemModalLabel{{ notificacao.id }}">Mensagem enviada para {{ notificacao.pessoa.nome }}</h5>
+                                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                        </div>
+                                        <div class="modal-body">
+                                            <div class="alert alert-light border">
+                                                {{ notificacao.mensagem }}
+                                            </div>
+                                        </div>
+                                        <div class="modal-footer">
+                                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+                                            
+                                            {% with telefone_limpo=notificacao.pessoa.telefone|default:""|cut:" "|cut:"-"|cut:"("|cut:")" %}
+                                            {% if telefone_limpo %}
+                                                {% if telefone_limpo|length == 10 or telefone_limpo|length == 11 %}
+                                                    {% with telefone_whatsapp='55'|add:telefone_limpo %}
+                                                    <a href="https://wa.me/{{ telefone_whatsapp }}?text={{ notificacao.mensagem|urlencode }}" 
+                                                       class="btn btn-success" target="_blank">
+                                                        <i class="fab fa-whatsapp me-1"></i> Enviar via WhatsApp
+                                                    </a>
+                                                    {% endwith %}
+                                                {% else %}
+                                                    <a href="https://wa.me/{{ telefone_limpo }}?text={{ notificacao.mensagem|urlencode }}" 
+                                                       class="btn btn-success" target="_blank">
+                                                        <i class="fab fa-whatsapp me-1"></i> Enviar via WhatsApp
+                                                    </a>
+                                                {% endif %}
+                                            {% endif %}
+                                            {% endwith %}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="7" class="text-center">Nenhuma notificação encontrada com os filtros selecionados</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %} 

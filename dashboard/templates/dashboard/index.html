@@ -1,0 +1,839 @@
+{% extends 'dashboard/base.html' %}
+
+{% block content %}
+<h1 class="h3 mb-4 text-gray-800">Dashboard</h1>
+
+<div class="row">
+    <!-- Bloco 1: Cadastro de Ampolas Abertas -->
+    <div class="col-md-6 mb-4">
+        <div class="card shadow h-100">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">Cadastro de Ampolas Abertas</h6>
+            </div>
+            <div class="card-body">
+                <button type="button" class="btn btn-primary mb-3" data-bs-toggle="modal" data-bs-target="#cadastrarAmpolaModal">
+                    <i class="fas fa-plus-circle me-2"></i> Nova Ampola Aberta
+                </button>
+                
+                <hr>
+                
+                <h6 class="mt-4 mb-3">Ampolas Recentes</h6>
+                <div class="table-responsive">
+                    <table class="table table-bordered">
+                        <thead>
+                            <tr>
+                                <th>Tipo</th>
+                                <th>Abertura</th>
+                                <th>Vencimento</th>
+                                <th>Doses</th>
+                                <th>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for ampola in ampolas_recentes %}
+                            <tr {% if ampola.vencida %}class="table-danger"{% endif %}>
+                                <td>{{ ampola.tipo_vacina.nome }}</td>
+                                <td>{{ ampola.data_abertura|date:"d/m/Y H:i" }}</td>
+                                <td>{{ ampola.data_vencimento|date:"d/m/Y H:i" }}</td>
+                                <td>{{ ampola.doses_restantes }} / {{ ampola.doses_iniciais }}</td>
+                                <td>
+                                    {% if ampola.doses_restantes > 0 and not ampola.vencida %}
+                                    <button class="btn btn-sm btn-success dar-baixa-btn" data-ampola-id="{{ ampola.id }}" title="Dar baixa em dose utilizada">
+                                        <i class="fas fa-syringe"></i>
+                                    </button>
+                                    {% else %}
+                                    <button class="btn btn-sm btn-secondary" disabled title="Sem doses disponíveis ou vencida">
+                                        <i class="fas fa-syringe"></i>
+                                    </button>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="5" class="text-center">Nenhuma ampola registrada recentemente</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Bloco 2: Contador de Grupos -->
+    <div class="col-md-6 mb-4">
+        <div class="card shadow h-100">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">Grupos Prioritários</h6>
+            </div>
+            <div class="card-body">
+                <div class="row text-center mb-4">
+                    <div class="col-md-4 mb-3">
+                        <div class="grupo-icon text-danger">
+                            <i class="fas fa-user-clock"></i>
+                        </div>
+                        <div class="grupo-count">{{ grupos_idosos }}</div>
+                        <div>Idosos</div>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <div class="grupo-icon text-warning">
+                            <i class="fas fa-heartbeat"></i>
+                        </div>
+                        <div class="grupo-count">{{ grupos_risco }}</div>
+                        <div>Grupo de Risco</div>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <div class="grupo-icon text-info">
+                            <i class="fas fa-baby"></i>
+                        </div>
+                        <div class="grupo-count">{{ grupos_criancas }}</div>
+                        <div>Crianças</div>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <div class="grupo-icon text-primary">
+                            <i class="fas fa-female"></i>
+                        </div>
+                        <div class="grupo-count">{{ grupos_gestantes }}</div>
+                        <div>Gestantes</div>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <div class="grupo-icon text-success">
+                            <i class="fas fa-puzzle-piece"></i>
+                        </div>
+                        <div class="grupo-count">{{ grupos_tea }}</div>
+                        <div>TEA</div>
+                    </div>
+                </div>
+                
+                <hr>
+                
+                <h6 class="mt-4 mb-3">Ampolas Prestes a Vencer</h6>
+                {% if ampolas_prestes_vencer %}
+                <div class="alert alert-warning">
+                    <p>Há <strong>{{ ampolas_prestes_vencer.count }}</strong> ampolas que vencerão nas próximas 24 horas.</p>
+                    
+                    <div class="mt-3">
+                        {% for ampola in ampolas_prestes_vencer %}
+                        <div class="card mb-2">
+                            <div class="card-body py-2">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <span>
+                                        <strong>{{ ampola.tipo_vacina.nome }}</strong> - 
+                                        Vence em: {{ ampola.data_vencimento|timeuntil }} - 
+                                        Doses: {{ ampola.doses_restantes }}
+                                    </span>
+                                    <div class="dropdown">
+                                        <button class="btn btn-sm btn-outline-primary dropdown-toggle" type="button" id="notifyDropdown{{ ampola.id }}" data-bs-toggle="dropdown" aria-expanded="false">
+                                            Notificar
+                                        </button>
+                                        <ul class="dropdown-menu" aria-labelledby="notifyDropdown{{ ampola.id }}">
+                                            <li>
+                                                <a class="dropdown-item notify-group" href="#" 
+                                                   data-grupo="todos" data-ampola="{{ ampola.id }}">
+                                                    <i class="fas fa-users me-2"></i> Todos os Grupos
+                                                </a>
+                                            </li>
+                                            <li>
+                                                <a class="dropdown-item notify-group" href="#" 
+                                                   data-grupo="idoso" data-ampola="{{ ampola.id }}">
+                                                    <i class="fas fa-user-clock me-2"></i> Idosos
+                                                </a>
+                                            </li>
+                                            <li>
+                                                <a class="dropdown-item notify-group" href="#" 
+                                                   data-grupo="risco" data-ampola="{{ ampola.id }}">
+                                                    <i class="fas fa-heartbeat me-2"></i> Grupo de Risco
+                                                </a>
+                                            </li>
+                                            <li>
+                                                <a class="dropdown-item notify-group" href="#" 
+                                                   data-grupo="crianca" data-ampola="{{ ampola.id }}">
+                                                    <i class="fas fa-baby me-2"></i> Crianças
+                                                </a>
+                                            </li>
+                                            <li>
+                                                <a class="dropdown-item notify-group" href="#" 
+                                                   data-grupo="gestante" data-ampola="{{ ampola.id }}">
+                                                    <i class="fas fa-female me-2"></i> Gestantes
+                                                </a>
+                                            </li>
+                                            <li>
+                                                <a class="dropdown-item notify-group" href="#" 
+                                                   data-grupo="tea" data-ampola="{{ ampola.id }}">
+                                                    <i class="fas fa-puzzle-piece me-2"></i> TEA
+                                                </a>
+                                            </li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% else %}
+                <div class="alert alert-success">
+                    <p>Não há ampolas prestes a vencer nas próximas 24 horas.</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Bloco 3: Monitoramento com Gráficos -->
+<div class="row">
+    <div class="col-12 mb-4">
+        <div class="card shadow">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">Estatísticas de Vacinas</h6>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <canvas id="vacinasChart"></canvas>
+                    </div>
+                    <div class="col-md-6">
+                        <canvas id="notificacoesChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Notificações Recentes -->
+<div class="row">
+    <div class="col-12 mb-4">
+        <div class="card shadow">
+            <div class="card-header py-3 d-flex justify-content-between align-items-center">
+                <h6 class="m-0 font-weight-bold text-primary">Notificações Recentes</h6>
+                <a href="{% url 'dashboard:log_notificacoes' %}" class="btn btn-sm btn-primary" id="btnVerTodasNotificacoes">
+                    Ver Todas <i class="fas fa-arrow-right ms-1"></i>
+                </a>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-bordered">
+                        <thead>
+                            <tr>
+                                <th>Pessoa</th>
+                                <th>Grupo</th>
+                                <th>Vacina</th>
+                                <th>Data</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for notificacao in notificacoes_recentes %}
+                            <tr>
+                                <td>{{ notificacao.pessoa.nome }}</td>
+                                <td>
+                                    {% for grupo in notificacao.pessoa.grupos.all %}
+                                    <span class="badge {% if grupo.tipo == 'idoso' %}bg-danger{% elif grupo.tipo == 'risco' %}bg-warning{% elif grupo.tipo == 'crianca' %}bg-info{% endif %} me-1">
+                                        {{ grupo.get_tipo_display }}
+                                    </span>
+                                    {% endfor %}
+                                </td>
+                                <td>{{ notificacao.tipo_vacina.nome }}</td>
+                                <td>{{ notificacao.data_envio|date:"d/m/Y H:i" }}</td>
+                                <td>
+                                    {% if notificacao.enviada %}
+                                    <span class="badge bg-success">Enviada</span>
+                                    {% else %}
+                                    <span class="badge bg-danger">Falha</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="5" class="text-center">Nenhuma notificação enviada recentemente</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Toast de carregamento -->
+<div class="toast-container position-fixed bottom-0 end-0 p-3">
+  <div id="loadingToast" class="toast align-items-center text-white bg-primary" role="alert" aria-live="assertive" aria-atomic="true">
+    <div class="d-flex">
+      <div class="toast-body">
+        <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+        Processando...
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Toast para notificações de sucesso/erro -->
+<div class="toast-container position-fixed bottom-0 end-0 p-3">
+  <div id="notificacaoToast" class="toast align-items-center text-white" role="alert" aria-live="assertive" aria-atomic="true">
+    <div class="d-flex">
+      <div class="toast-body" id="notificacaoMensagem">
+        Operação realizada com sucesso.
+      </div>
+      <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Dados dos últimos 7 dias
+    const dadosUltimos7Dias = {{ ultimos_7_dias|safe }};
+    
+    // Gráfico de Vacinas
+    const ctxVacinas = document.getElementById('vacinasChart').getContext('2d');
+    const vacinasChart = new Chart(ctxVacinas, {
+        type: 'line',
+        data: {
+            labels: dadosUltimos7Dias.map(item => item.data),
+            datasets: [
+                {
+                    label: 'Ampolas Abertas',
+                    data: dadosUltimos7Dias.map(item => item.ampolas_abertas),
+                    backgroundColor: 'rgba(78, 115, 223, 0.1)',
+                    borderColor: 'rgba(78, 115, 223, 1)',
+                    borderWidth: 2,
+                    tension: 0.3
+                },
+                {
+                    label: 'Ampolas Vencidas',
+                    data: dadosUltimos7Dias.map(item => item.ampolas_vencidas),
+                    backgroundColor: 'rgba(231, 74, 59, 0.1)',
+                    borderColor: 'rgba(231, 74, 59, 1)',
+                    borderWidth: 2,
+                    tension: 0.3
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                title: {
+                    display: true,
+                    text: 'Ampolas Abertas vs. Vencidas (Últimos 7 dias)'
+                }
+            }
+        }
+    });
+    
+    // Gráfico de Notificações e Vacinações
+    const ctxNotificacoes = document.getElementById('notificacoesChart').getContext('2d');
+    const notificacoesChart = new Chart(ctxNotificacoes, {
+        type: 'bar',
+        data: {
+            labels: dadosUltimos7Dias.map(item => item.data),
+            datasets: [
+                {
+                    label: 'Vacinações Realizadas',
+                    data: dadosUltimos7Dias.map(item => item.vacinacoes),
+                    backgroundColor: 'rgba(28, 200, 138, 0.7)',
+                    borderColor: 'rgba(28, 200, 138, 1)',
+                    borderWidth: 1
+                },
+                {
+                    label: 'Notificações Enviadas',
+                    data: dadosUltimos7Dias.map(item => item.notificacoes),
+                    backgroundColor: 'rgba(246, 194, 62, 0.7)',
+                    borderColor: 'rgba(246, 194, 62, 1)',
+                    borderWidth: 1
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                title: {
+                    display: true,
+                    text: 'Vacinações vs. Notificações (Últimos 7 dias)'
+                }
+            }
+        }
+    });
+    
+    // Envio de notificações
+    document.addEventListener('DOMContentLoaded', function() {
+        const notifyLinks = document.querySelectorAll('.notify-group');
+        let loadingModal;
+        let erroModal, sucessoModal, confirmacaoModal;
+        
+        // Inicializar os modais
+        loadingModal = new bootstrap.Modal(document.getElementById('loadingModal'));
+        erroModal = new bootstrap.Modal(document.getElementById('erroModal'));
+        sucessoModal = new bootstrap.Modal(document.getElementById('sucessoModal'));
+        confirmacaoModal = new bootstrap.Modal(document.getElementById('confirmacaoModal'));
+        
+        // Adicionar evento para o botão de fechar manualmente
+        document.getElementById('closeLoadingModalBtn').addEventListener('click', function() {
+            loadingModal.hide();
+            cleanupModalEffects();
+        });
+        
+        // Garantir que o botão de ver todas notificações funcione
+        document.getElementById('btnVerTodasNotificacoes').addEventListener('click', function(e) {
+            e.preventDefault();
+            window.location.href = "{% url 'dashboard:log_notificacoes' %}";
+        });
+        
+        // Função para mostrar modal de erro
+        function mostrarErro(mensagem) {
+            document.getElementById('erroModalMensagem').textContent = mensagem;
+            erroModal.show();
+        }
+        
+        // Função para mostrar modal de sucesso
+        function mostrarSucesso(mensagem, callback) {
+            document.getElementById('sucessoModalMensagem').textContent = mensagem;
+            const modal = document.getElementById('sucessoModal');
+            
+            // Se houver callback, executar quando o modal for fechado
+            if (callback) {
+                modal.addEventListener('hidden.bs.modal', function handlerOnce() {
+                    callback();
+                    modal.removeEventListener('hidden.bs.modal', handlerOnce);
+                });
+            }
+            
+            sucessoModal.show();
+        }
+        
+        // Função para mostrar modal de confirmação
+        function mostrarConfirmacao(mensagem, callback) {
+            document.getElementById('confirmacaoModalMensagem').textContent = mensagem;
+            
+            // Remover qualquer handler anterior do botão confirmar
+            const btnConfirmar = document.getElementById('confirmacaoModalBtnConfirmar');
+            const clonarBotao = btnConfirmar.cloneNode(true);
+            btnConfirmar.parentNode.replaceChild(clonarBotao, btnConfirmar);
+            
+            // Adicionar novo handler
+            document.getElementById('confirmacaoModalBtnConfirmar').addEventListener('click', function() {
+                confirmacaoModal.hide();
+                if (callback) callback();
+            });
+            
+            confirmacaoModal.show();
+        }
+        
+        notifyLinks.forEach(link => {
+            link.addEventListener('click', function(e) {
+                e.preventDefault();
+                
+                const grupo = this.dataset.grupo;
+                const ampola = this.dataset.ampola;
+                
+                mostrarConfirmacao(`Confirma gerar links de WhatsApp para o grupo: ${grupo}?`, function() {
+                    // Mostrar indicador de carregamento
+                    loadingModal.show();
+                    
+                    // Enviar solicitação para gerar os links
+                    fetch('{% url "dashboard:enviar_notificacao" %}', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/x-www-form-urlencoded',
+                            'X-CSRFToken': '{{ csrf_token }}'
+                        },
+                        body: `grupo_tipo=${grupo}&ampola_id=${ampola}`
+                    })
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error('Resposta do servidor não foi OK');
+                        }
+                        return response.json();
+                    })
+                    .then(data => {
+                        // Garantir que o modal de carregamento seja fechado
+                        loadingModal.hide();
+                        cleanupModalEffects();
+                        
+                        if (data.sucesso) {
+                            // Atualizar o modal de links
+                            const linksContainer = document.getElementById('whatsappLinksContainer');
+                            linksContainer.innerHTML = '';
+                            
+                            data.links_whatsapp.forEach(item => {
+                                const linkElement = document.createElement('div');
+                                linkElement.className = 'p-2 border-bottom';
+                                linkElement.innerHTML = `
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <div>
+                                            <strong>${item.nome}</strong> - ${item.telefone}
+                                        </div>
+                                        <a href="${item.link}" target="_blank" class="btn btn-success btn-sm">
+                                            <i class="fab fa-whatsapp me-1"></i> Enviar
+                                        </a>
+                                    </div>
+                                `;
+                                linksContainer.appendChild(linkElement);
+                            });
+                            
+                            // Abrir o modal com os links
+                            const whatsappLinksModal = new bootstrap.Modal(document.getElementById('whatsappLinksModal'));
+                            setTimeout(() => {
+                                whatsappLinksModal.show();
+                            }, 500); // Pequeno atraso para garantir que o modal anterior tenha tempo de ser removido
+                        } else {
+                            mostrarErro(`Erro: ${data.erro}`);
+                        }
+                    })
+                    .catch(error => {
+                        // Garantir que o modal de carregamento seja fechado mesmo em caso de erro
+                        loadingModal.hide();
+                        cleanupModalEffects();
+                        
+                        console.error('Erro:', error);
+                        mostrarErro('Erro ao gerar links de WhatsApp. Por favor, tente novamente.');
+                    });
+                });
+            });
+        });
+        
+        // Função auxiliar para limpar os efeitos residuais dos modais
+        function cleanupModalEffects() {
+            // Remover backdrop se ainda existir
+            setTimeout(() => {
+                const backdrops = document.querySelectorAll('.modal-backdrop');
+                backdrops.forEach(backdrop => {
+                    backdrop.remove();
+                });
+                
+                // Restaurar o scroll
+                document.body.classList.remove('modal-open');
+                document.body.style.overflow = '';
+                document.body.style.paddingRight = '';
+            }, 300);
+        }
+        
+        // Adicionar script para alternar entre os campos de duração curta e longa
+        const duracaoCurtaRadio = document.getElementById('duracao_curta');
+        const duracaoLongaRadio = document.getElementById('duracao_longa');
+        const duracaoCurtaCampos = document.getElementById('duracao_curta_campos');
+        const duracaoLongaCampos = document.getElementById('duracao_longa_campos');
+        
+        // Configurar data atual como valor padrão para o campo de data de vencimento
+        const dataVencimentoInput = document.getElementById('data_vencimento');
+        const agora = new Date();
+        // Definir data padrão de vencimento para 7 dias no futuro
+        const dataVencimento = new Date(agora);
+        dataVencimento.setDate(dataVencimento.getDate() + 7);
+        
+        const ano = dataVencimento.getFullYear();
+        const mes = String(dataVencimento.getMonth() + 1).padStart(2, '0');
+        const dia = String(dataVencimento.getDate()).padStart(2, '0');
+        const horas = String(dataVencimento.getHours()).padStart(2, '0');
+        const minutos = String(dataVencimento.getMinutes()).padStart(2, '0');
+        
+        dataVencimentoInput.value = `${ano}-${mes}-${dia}T${horas}:${minutos}`;
+        
+        // Função para alternar visibilidade dos campos com base no tipo de duração selecionado
+        function alternarCamposDuracao() {
+            if (duracaoCurtaRadio.checked) {
+                duracaoCurtaCampos.style.display = 'block';
+                duracaoLongaCampos.style.display = 'none';
+            } else {
+                duracaoCurtaCampos.style.display = 'none';
+                duracaoLongaCampos.style.display = 'block';
+            }
+        }
+        
+        // Adicionar event listeners para os radio buttons
+        duracaoCurtaRadio.addEventListener('change', alternarCamposDuracao);
+        duracaoLongaRadio.addEventListener('change', alternarCamposDuracao);
+        
+        // Inicializar o estado
+        alternarCamposDuracao();
+        
+        // Dar baixa em dose
+        const darBaixaBtns = document.querySelectorAll('.dar-baixa-btn');
+        darBaixaBtns.forEach(btn => {
+            btn.addEventListener('click', function() {
+                const ampolaId = this.dataset.ampolaId;
+                
+                mostrarConfirmacao('Confirma a utilização de uma dose desta ampola?', function() {
+                    fetch('{% url "dashboard:utilizar_dose" %}', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/x-www-form-urlencoded',
+                            'X-CSRFToken': '{{ csrf_token }}'
+                        },
+                        body: `ampola_id=${ampolaId}`
+                    })
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error('Resposta do servidor não foi OK');
+                        }
+                        return response.json();
+                    })
+                    .then(data => {
+                        if (data.sucesso) {
+                            mostrarSucesso('Dose registrada com sucesso!', function() {
+                                // Recarregar a página para atualizar os dados
+                                window.location.reload();
+                            });
+                        } else {
+                            mostrarErro(`Erro: ${data.erro}`);
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Erro:', error);
+                        mostrarErro('Erro ao registrar dose. Por favor, tente novamente.');
+                    });
+                });
+            });
+        });
+        
+        // Botões para utilizar dose
+        const utilizarDoseBtns = document.querySelectorAll('.utilizar-dose');
+        utilizarDoseBtns.forEach(btn => {
+            btn.addEventListener('click', function() {
+                const ampolaId = this.dataset.ampolaId;
+                const row = this.closest('tr');
+                
+                // Mostrar loader
+                const loadingToast = new bootstrap.Toast(document.getElementById('loadingToast'));
+                loadingToast.show();
+                
+                // Enviar requisição para utilizar dose
+                const formData = new FormData();
+                formData.append('ampola_id', ampolaId);
+                
+                fetch('{% url "dashboard:utilizar_dose" %}', {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'X-CSRFToken': '{{ csrf_token }}'
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    loadingToast.hide();
+                    
+                    // Toast de notificação
+                    const notificacaoToast = document.getElementById('notificacaoToast');
+                    const notificacaoMensagem = document.getElementById('notificacaoMensagem');
+                    
+                    if (data.sucesso) {
+                        // Atualizar a UI com as doses restantes
+                        const progressBar = row.querySelector('.progress-bar');
+                        const dosesText = `${data.doses_restantes}/${progressBar.getAttribute('aria-valuemax')}`;
+                        const percentual = (data.doses_restantes / progressBar.getAttribute('aria-valuemax')) * 100;
+                        
+                        progressBar.style.width = `${percentual}%`;
+                        progressBar.setAttribute('aria-valuenow', data.doses_restantes);
+                        progressBar.textContent = dosesText;
+                        
+                        // Caso esgote as doses, desabilitar o botão
+                        if (data.doses_restantes <= 0) {
+                            this.disabled = true;
+                            row.classList.remove('table-success', 'table-warning');
+                            row.classList.add('table-secondary');
+                            row.querySelector('td:nth-child(5) span').className = 'badge bg-secondary';
+                            row.querySelector('td:nth-child(5) span').textContent = 'Esgotado';
+                        }
+                        
+                        notificacaoToast.classList.remove('bg-danger');
+                        notificacaoToast.classList.add('bg-success');
+                        notificacaoMensagem.textContent = data.mensagem;
+                    } else {
+                        notificacaoToast.classList.remove('bg-success');
+                        notificacaoToast.classList.add('bg-danger');
+                        notificacaoMensagem.textContent = data.erro || 'Ocorreu um erro ao utilizar a dose';
+                    }
+                    
+                    // Mostrar notificação
+                    const bsNotificacao = new bootstrap.Toast(notificacaoToast);
+                    bsNotificacao.show();
+                })
+                .catch(error => {
+                    loadingToast.hide();
+                    console.error('Erro:', error);
+                    
+                    // Mostrar toast de erro
+                    const notificacaoToast = document.getElementById('notificacaoToast');
+                    notificacaoToast.classList.remove('bg-success');
+                    notificacaoToast.classList.add('bg-danger');
+                    document.getElementById('notificacaoMensagem').textContent = 'Erro de conexão ao utilizar dose';
+                    
+                    const bsNotificacao = new bootstrap.Toast(notificacaoToast);
+                    bsNotificacao.show();
+                });
+            });
+        });
+    });
+</script>
+
+<!-- Modal de Links de WhatsApp -->
+<div class="modal fade" id="whatsappLinksModal" tabindex="-1" aria-labelledby="whatsappLinksModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="whatsappLinksModalLabel">Links para WhatsApp</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-info">
+                    <p>Clique nos botões abaixo para abrir o WhatsApp e enviar as mensagens:</p>
+                </div>
+                <div id="whatsappLinksContainer" class="overflow-auto" style="max-height: 400px;">
+                    <!-- Os links serão inseridos aqui dinamicamente -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Carregamento -->
+<div class="modal fade" id="loadingModal" tabindex="-1" aria-labelledby="loadingModalLabel" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-body text-center py-4">
+                <div class="spinner-border text-primary mb-3" role="status">
+                    <span class="visually-hidden">Carregando...</span>
+                </div>
+                <h5>Processando...</h5>
+                <p class="mb-0">Por favor, aguarde.</p>
+                <div class="mt-3">
+                    <button type="button" class="btn btn-outline-secondary btn-sm" id="closeLoadingModalBtn">
+                        Fechar manualmente
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Cadastro de Ampola -->
+<div class="modal fade" id="cadastrarAmpolaModal" tabindex="-1" aria-labelledby="cadastrarAmpolaModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="cadastrarAmpolaModalLabel">Cadastrar Nova Ampola</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form action="{% url 'dashboard:cadastrar_ampola' %}" method="post">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label for="tipo_vacina" class="form-label">Tipo de Vacina</label>
+                        <select class="form-select" id="tipo_vacina" name="tipo_vacina" required>
+                            {% for tipo in tipos_vacina %}
+                                <option value="{{ tipo.id }}">{{ tipo.nome }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="doses_iniciais" class="form-label">Doses Iniciais</label>
+                        <input type="number" class="form-control" id="doses_iniciais" name="doses_iniciais" value="10" min="1" required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Tipo de Duração</label>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="tipo_duracao" id="duracao_curta" value="curta" checked>
+                            <label class="form-check-label" for="duracao_curta">
+                                Curta duração (em horas)
+                            </label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="tipo_duracao" id="duracao_longa" value="longa">
+                            <label class="form-check-label" for="duracao_longa">
+                                Longa duração (por calendário)
+                            </label>
+                        </div>
+                    </div>
+
+                    <div id="duracao_curta_campos" class="mb-3">
+                        <label for="horas_validade" class="form-label">Horas de Validade</label>
+                        <input type="number" class="form-control" id="horas_validade" name="horas_validade" value="6" min="1">
+                        <small class="text-muted">A data de abertura será o momento atual</small>
+                    </div>
+
+                    <div id="duracao_longa_campos" class="mb-3" style="display: none;">
+                        <label for="data_vencimento" class="form-label">Data e Hora de Vencimento</label>
+                        <input type="datetime-local" class="form-control" id="data_vencimento" name="data_vencimento">
+                        <small class="text-muted">A data de abertura será o momento atual</small>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary">Cadastrar</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Erro -->
+<div class="modal fade" id="erroModal" tabindex="-1" aria-labelledby="erroModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title" id="erroModalLabel">Erro</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="text-center mb-3">
+                    <i class="fas fa-exclamation-triangle fa-3x text-danger"></i>
+                </div>
+                <p id="erroModalMensagem" class="text-center"></p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Sucesso -->
+<div class="modal fade" id="sucessoModal" tabindex="-1" aria-labelledby="sucessoModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title" id="sucessoModalLabel">Sucesso</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="text-center mb-3">
+                    <i class="fas fa-check-circle fa-3x text-success"></i>
+                </div>
+                <p id="sucessoModalMensagem" class="text-center"></p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Confirmação -->
+<div class="modal fade" id="confirmacaoModal" tabindex="-1" aria-labelledby="confirmacaoModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="confirmacaoModalLabel">Confirmação</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="text-center mb-3">
+                    <i class="fas fa-question-circle fa-3x text-primary"></i>
+                </div>
+                <p id="confirmacaoModalMensagem" class="text-center"></p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" id="confirmacaoModalBtnConfirmar">Confirmar</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 
