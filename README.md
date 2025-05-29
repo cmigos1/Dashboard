@@ -1,5 +1,6 @@
 # ImunoDose - Sistema de Gestão de Vacinas
 
+Projeto para HackaMT - Edição Caceres 2024
 Sistema para cadastro de vacinas, identificação de grupos de risco e integração com o WhatsApp para notificações.
 
 ## Funcionalidades
