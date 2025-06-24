@@ -115,6 +115,10 @@ https://wa.me/5511999999999?text=Ol%C3%A1%20Nome%2C%20temos%20doses%20dispon%C3%
 
 ## Estrutura do Projeto
 
-- **dashboard**: App principal com o painel de controle
+- **dashboard**: App principal com o painel de controle!
+[Captura de tela 2025-06-23 202247](https://github.com/user-attachments/assets/1a47f5e9-c3b6-4e1a-b0dd-0bfeb24e198f)
+
 - **vacinas**: App para gerenciamento de vacinas e ampolas
 - **grupos**: App para gerenciamento de grupos prioritários e pessoas 
+
+
